@@ -19,6 +19,9 @@ const App: React.FC = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [pendingImage, setPendingImage] = useState<{ base64: string; mimeType: string } | null>(null);
 
+  // Selection State for Interaction
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+
   const startAnalysis = async (base64: string, mimeType: string) => {
     // Set preview immediately
     const previewUrl = `data:${mimeType};base64,${base64}`;
@@ -29,6 +32,7 @@ const App: React.FC = () => {
       error: null,
       imagePreview: previewUrl,
     });
+    setSelectedItemId(null); // Reset selection on new analysis
 
     try {
       const result = await analyzeImageForFFE(base64, mimeType);
@@ -77,6 +81,12 @@ const App: React.FC = () => {
       error: null,
       imagePreview: null,
     });
+    setSelectedItemId(null);
+  };
+
+  const handleItemSelect = (id: string) => {
+    // Toggle: if clicking the already selected item, deselect it. Otherwise select new.
+    setSelectedItemId(prev => (prev === id ? null : id));
   };
 
   // Helper to render bounding boxes
@@ -85,6 +95,14 @@ const App: React.FC = () => {
       const [ymin, xmin, ymax, xmax] = item.box_2d;
       const number = index + 1;
       
+      // Interaction Logic
+      const isSelected = selectedItemId === item.id;
+      // If something is selected, hide everything else. 
+      // If nothing is selected, show everything.
+      const isVisible = selectedItemId === null || isSelected;
+
+      if (!isVisible) return null;
+
       const style: React.CSSProperties = {
         top: `${ymin * 100}%`,
         left: `${xmin * 100}%`,
@@ -97,15 +115,28 @@ const App: React.FC = () => {
         <div 
           key={item.id} 
           style={style} 
-          className="border-2 border-indigo-500 bg-indigo-500/10 group hover:bg-indigo-500/20 transition-colors cursor-pointer z-10 hover:z-20"
+          onClick={(e) => {
+            e.stopPropagation(); // Prevent clicking the box from triggering the background click
+            handleItemSelect(item.id);
+          }}
+          className={`border-2 transition-all cursor-pointer z-10 
+            ${isSelected 
+              ? 'border-indigo-400 bg-indigo-500/20 z-50 shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]' // Dim background using massive shadow hack or just highlight
+              : 'border-indigo-500 bg-indigo-500/10 hover:bg-indigo-500/20 hover:z-20'
+            }
+          `}
         >
           {/* Number Badge */}
-          <div className="absolute -top-3 -left-3 w-6 h-6 bg-indigo-600 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-sm border border-white z-30">
+          <div className={`absolute -top-3 -left-3 w-6 h-6 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-sm border border-white transition-colors
+            ${isSelected ? 'bg-indigo-700 scale-110' : 'bg-indigo-600'}
+          `}>
             {number}
           </div>
           
-          {/* Tooltip Label */}
-          <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs px-2 py-1 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-40 pointer-events-none">
+          {/* Tooltip Label - Always show if selected, otherwise on hover */}
+          <div className={`absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs px-2 py-1 rounded shadow-lg transition-opacity whitespace-nowrap z-40 pointer-events-none
+            ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}
+          `}>
             {item.label}
           </div>
         </div>
@@ -169,13 +200,17 @@ const App: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-full animate-fade-in items-start">
             {/* Left Column: Image Preview with Overlays */}
             <div className="space-y-6 sticky top-24">
-              <div className="relative group rounded-2xl overflow-hidden bg-slate-900 shadow-lg ring-1 ring-slate-900/5 aspect-auto flex items-center justify-center">
+              {/* Click background to reset selection */}
+              <div 
+                className="relative group rounded-2xl overflow-hidden bg-slate-900 shadow-lg ring-1 ring-slate-900/5 aspect-auto flex items-center justify-center cursor-default"
+                onClick={() => setSelectedItemId(null)}
+              >
                  {state.imagePreview && (
                    <div className="relative w-full h-auto">
                      <img 
                       src={state.imagePreview} 
                       alt="Analyzed content" 
-                      className="w-full h-auto object-contain block" 
+                      className={`w-full h-auto object-contain block transition-opacity duration-300 ${selectedItemId ? 'opacity-50' : 'opacity-100'}`} 
                      />
                      {/* Bounding Boxes Layer */}
                      {state.status === 'success' && state.result && (
@@ -223,7 +258,12 @@ const App: React.FC = () => {
             {/* Right Column: Results */}
             <div className="relative min-h-[400px] h-full">
               {state.status === 'success' && state.result && (
-                <ResultCard analysis={state.result} onReset={handleReset} />
+                <ResultCard 
+                  analysis={state.result} 
+                  onReset={handleReset} 
+                  selectedItemId={selectedItemId}
+                  onItemSelect={handleItemSelect}
+                />
               )}
               
               {state.status === 'analyzing' && (

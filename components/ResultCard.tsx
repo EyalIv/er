@@ -1,13 +1,33 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { FFEAnalysis } from '../types';
 
 interface ResultCardProps {
   analysis: FFEAnalysis;
   onReset: () => void;
+  selectedItemId: string | null;
+  onItemSelect: (id: string) => void;
 }
 
-export const ResultCard: React.FC<ResultCardProps> = ({ analysis, onReset }) => {
+export const ResultCard: React.FC<ResultCardProps> = ({ 
+  analysis, 
+  onReset,
+  selectedItemId,
+  onItemSelect
+}) => {
   
+  // Refs to store row elements for scrolling
+  const rowRefs = useRef<{[key: string]: HTMLTableRowElement | null}>({});
+
+  // Auto-scroll to selected item
+  useEffect(() => {
+    if (selectedItemId && rowRefs.current[selectedItemId]) {
+      rowRefs.current[selectedItemId]?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    }
+  }, [selectedItemId]);
+
   const handleDownloadExcel = () => {
     // Add BOM for proper UTF-8 handling in Excel
     const BOM = "\uFEFF";
@@ -75,21 +95,42 @@ export const ResultCard: React.FC<ResultCardProps> = ({ analysis, onReset }) => 
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-slate-100">
-              {analysis.items.map((item, index) => (
-                <tr key={item.id} className="hover:bg-indigo-50/60 transition-colors group">
-                  <td className="px-6 py-3 whitespace-nowrap align-top">
-                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 text-slate-500 font-bold text-xs group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                      {index + 1}
-                    </span>
-                  </td>
-                  <td className="px-6 py-3 text-sm font-medium text-slate-900 group-hover:text-indigo-700 transition-colors align-top">
-                    {item.label}
-                  </td>
-                  <td className="px-6 py-3 text-sm text-slate-500 align-top">
-                    {item.description}
-                  </td>
-                </tr>
-              ))}
+              {analysis.items.map((item, index) => {
+                const isSelected = selectedItemId === item.id;
+                
+                return (
+                  <tr 
+                    key={item.id} 
+                    ref={el => { rowRefs.current[item.id] = el }}
+                    onClick={() => onItemSelect(item.id)}
+                    className={`transition-colors cursor-pointer border-l-4 
+                      ${isSelected 
+                        ? 'bg-indigo-50 border-l-indigo-600' 
+                        : 'border-l-transparent hover:bg-slate-50'
+                      }
+                    `}
+                  >
+                    <td className="px-6 py-3 whitespace-nowrap align-top">
+                      <span className={`flex items-center justify-center w-6 h-6 rounded-full font-bold text-xs transition-colors
+                        ${isSelected 
+                          ? 'bg-indigo-600 text-white' 
+                          : 'bg-slate-100 text-slate-500'
+                        }
+                      `}>
+                        {index + 1}
+                      </span>
+                    </td>
+                    <td className={`px-6 py-3 text-sm font-medium transition-colors align-top
+                      ${isSelected ? 'text-indigo-700' : 'text-slate-900'}
+                    `}>
+                      {item.label}
+                    </td>
+                    <td className="px-6 py-3 text-sm text-slate-500 align-top">
+                      {item.description}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
