@@ -8,6 +8,8 @@ An intelligent interior design tool that leverages Google's Gemini 3 Pro model t
 
 *Example analysis showing detected FF&E items in an interior scene, with bounding boxes highlighting furniture, artwork, and decor elements.*
 
+Photo by [Thai Nguyen Anh](https://unsplash.com/@kyuubei07012008?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText) on [Unsplash](https://unsplash.com/photos/a-couple-of-women-sitting-next-to-each-other-in-a-living-room-qZaf_d--iB4?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText)
+
 ## Features
 
 - **AI Object Detection**: Automatically identifies furniture, lighting, and decor items in interior images.
